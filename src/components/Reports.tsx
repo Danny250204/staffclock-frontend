@@ -45,6 +45,7 @@ const Reports = () => {
       start = weekAgo.getTime();
     }
 
+    // Fetch attendance for this period
     const { data: attendanceData, error } = await supabase
       .from('attendance')
       .select('id, user_id, type, timestamp, lat, lng')
@@ -57,7 +58,7 @@ const Reports = () => {
       return;
     }
 
-    // Fetch profiles from backend (bypasses RLS)
+    // Fetch profiles from LIVE backend (bypasses RLS)
     let profilesData: any[] = [];
     try {
       const res = await fetch('https://staffclock-backend-1.onrender.com/api/profiles');
@@ -67,24 +68,27 @@ const Reports = () => {
     }
 
     const nameMap: Record<string, string> = {};
-    if (profilesData) {
+    if (profilesData && Array.isArray(profilesData)) {
       profilesData.forEach((p: any) => {
         nameMap[p.id] = p.display_name;
       });
     }
 
+    // Calculate hours per employee
     const employeeMap: Record<string, { clockIn: number | null; total: number }> = {};
-    attendanceData.forEach((record: any) => {
-      if (!employeeMap[record.user_id]) {
-        employeeMap[record.user_id] = { clockIn: null, total: 0 };
-      }
-      if (record.type === 'clock-in' && employeeMap[record.user_id].clockIn === null) {
-        employeeMap[record.user_id].clockIn = record.timestamp;
-      } else if (record.type === 'clock-out' && employeeMap[record.user_id].clockIn !== null) {
-        employeeMap[record.user_id].total += record.timestamp - employeeMap[record.user_id].clockIn!;
-        employeeMap[record.user_id].clockIn = null;
-      }
-    });
+    if (attendanceData) {
+      attendanceData.forEach((record: any) => {
+        if (!employeeMap[record.user_id]) {
+          employeeMap[record.user_id] = { clockIn: null, total: 0 };
+        }
+        if (record.type === 'clock-in' && employeeMap[record.user_id].clockIn === null) {
+          employeeMap[record.user_id].clockIn = record.timestamp;
+        } else if (record.type === 'clock-out' && employeeMap[record.user_id].clockIn !== null) {
+          employeeMap[record.user_id].total += record.timestamp - employeeMap[record.user_id].clockIn!;
+          employeeMap[record.user_id].clockIn = null;
+        }
+      });
+    }
 
     const totalMinutes = Object.values(employeeMap).reduce((sum, emp) => sum + emp.total / 60000, 0);
     const numEmployees = Object.keys(employeeMap).length;
@@ -110,7 +114,8 @@ const Reports = () => {
       }))
     );
 
-    const points: MapPoint[] = attendanceData
+    // Build map points (only clock‑ins with valid coordinates)
+    const points: MapPoint[] = (attendanceData || [])
       .filter((r: any) => r.type === 'clock-in' && r.lat != null && r.lng != null)
       .map((r: any) => ({
         id: r.id,
@@ -144,9 +149,26 @@ const Reports = () => {
     <div className="card" style={{ padding: '1.5rem' }}>
       <h2 style={{ marginTop: 0 }}>📊 Analytics</h2>
       <div style={{ marginBottom: '1.5rem' }}>
-        <button onClick={() => setRange('today')} className={`nav-btn ${range === 'today' ? 'active' : ''}`} style={{ marginRight: '0.5rem' }}>Today</button>
-        <button onClick={() => setRange('yesterday')} className={`nav-btn ${range === 'yesterday' ? 'active' : ''}`} style={{ marginRight: '0.5rem' }}>Yesterday</button>
-        <button onClick={() => setRange('week')} className={`nav-btn ${range === 'week' ? 'active' : ''}`}>Last 7 Days</button>
+        <button
+          onClick={() => setRange('today')}
+          className={`nav-btn ${range === 'today' ? 'active' : ''}`}
+          style={{ marginRight: '0.5rem' }}
+        >
+          Today
+        </button>
+        <button
+          onClick={() => setRange('yesterday')}
+          className={`nav-btn ${range === 'yesterday' ? 'active' : ''}`}
+          style={{ marginRight: '0.5rem' }}
+        >
+          Yesterday
+        </button>
+        <button
+          onClick={() => setRange('week')}
+          className={`nav-btn ${range === 'week' ? 'active' : ''}`}
+        >
+          Last 7 Days
+        </button>
       </div>
       {loading && <p>Loading...</p>}
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>

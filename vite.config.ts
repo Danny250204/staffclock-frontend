@@ -12,18 +12,7 @@ export default defineConfig({
         short_name: 'StaffClock',
         description: 'Professional attendance tracker with geolocation',
         theme_color: '#1e293b',
-        icons: [
-          {
-            src: '/icon-192.png',
-            sizes: '192x192',
-            type: 'image/png',
-          },
-          {
-            src: '/icon-512.png',
-            sizes: '512x512',
-            type: 'image/png',
-          },
-        ],
+        // no icons array – uses default favicon.ico instead
       },
     }),
   ],

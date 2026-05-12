@@ -10,16 +10,10 @@ export interface AttendanceRecord {
 }
 
 const dbPromise = openDB<{
-  attendance: {
-    key: number;
-    value: AttendanceRecord;
-  };
+  attendance: { key: number; value: AttendanceRecord };
 }>('staffclock-offline', 1, {
   upgrade(db) {
-    db.createObjectStore('attendance', {
-      keyPath: 'id',
-      autoIncrement: true,
-    });
+    db.createObjectStore('attendance', { keyPath: 'id', autoIncrement: true });
   },
 });
 
@@ -63,11 +57,9 @@ export const syncUnsynced = async (userId?: string) => {
           user_id: userId || 'demo_user',
         }),
       });
-      if (response.ok) {
-        await markSynced(record.id!);
-      }
+      if (response.ok) await markSynced(record.id!);
     } catch (err) {
-      console.error('Sync failed for record', record.id, err);
+      console.error('Sync failed', err);
     }
   }
 };
